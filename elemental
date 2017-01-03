@@ -255,6 +255,7 @@ class CompoundNode:
         compound_without_moles = re.match(r'^\d*(.*)', self.unaltered_compound.strip())
         compound_without_moles = compound_without_moles.group(1)
         return compound_without_moles
+
     def __contains__(self, item):
         keys = self.elements_dict
         for elem in keys:
@@ -288,20 +289,32 @@ class CompoundNode:
 
 
 def balance(equation: str, return_moles=False):
+    """
+    Determine the number of moles each compound needs on both sides of the equation in order
+    to have the same number of elements on both sides.
+    :param equation: The string of the given equation. Ex: H2 + O2 -> H2O
+    :param return_moles: If false, return moles makes the function return a string of the balanced equation. If false (default)
+    the function returns a list of the balanced moles, positive numbers in the list are reactants, negative are products.
+    :return: Either a string of the balanced element, or a list of the balanced moles (if return_moles is True)
+    """
     # Begin by splitting the equation into two parts. Reactants and Products
 
     if equation.__contains__('->'):
         splitter = '->'
     elif equation.__contains__('-->'):
         splitter = '-->'
+    elif equation.__contains__('='):
+        splitter = '='
     else:
-        raise ProductsNotFoundException('No \"->\" or \"-->\" found.')
+        raise ProductsNotFoundException('No \"->\", \"-->\" or \"=\" found.')
 
     expanded_equation = expand_equation(equation)
 
     equation_list = expanded_equation.split(splitter)
+    
     reactant_side = 0
     product_side = 1
+
     reactants = equation_list[reactant_side].split('+')
     products = equation_list[product_side].split('+')
     reactant_nodes, product_nodes = create_nodes_from_eq(reactants, products)
@@ -316,67 +329,35 @@ def balance(equation: str, return_moles=False):
 
     validate_input(reactant_nodes, product_nodes)
 
-    #if validate_balancing(reactant_nodes, product_nodes):
-        #return equation
-
-    unique_elements = []
     equation_node_list = reactant_nodes + product_nodes
-    for compound in equation_node_list:
-        for element in compound.elements_dict:
-            if element not in unique_elements:
-                unique_elements.append(element)
+    unique_elements = get_unique_elements(equation_node_list)
 
-    number_of_compounds = len(equation)
     elements_matrix = create_matrix(unique_elements, equation_node_list)
-    #print(elements_matrix)
-    len_of_row = len(elements_matrix[0])
-    len_of_col = len(elements_matrix)
-    """
-    if len_of_col < len_of_row:
-        # Fill the final row with 00001 (depending on the width)
-        row = []
-        for i in range(number_of_compounds):
-            if i == number_of_compounds - 1:
-                row.append(1)
-            else:
-                row.append(0)
-        elements_matrix.append(row)
-    """
 
-    balanced_moles = find_null_space(elements_matrix)
+    balanced_moles_in_decimal = find_null_space(elements_matrix)
 
-    #print(ns)
-    """else:
-        element_by_compound_mat = numpy.matrix(elements_matrix)
-        print(element_by_compound_mat)
+    if return_moles:
+        return decimal_to_moles(balanced_moles_in_decimal)
 
-        inverse_element_by_compound_mat = element_by_compound_mat.getI()
-        print(inverse_element_by_compound_mat)
-        # The balanced moles can be found in the last col of the matrix
-        balanced_moles = inverse_element_by_compound_mat[:, number_of_compounds - 1]
-        balanced_moles = balanced_moles.tolist()
-    """
     final_col = []
-    for number in balanced_moles:
+    for number in balanced_moles_in_decimal:
         final_col.append(abs(number[0]))
 
     # The final_col contains decimals right now. We need to divide by the smallest to determine the number of moles
-    minimum = min(final_col)
-    for index in range(len(final_col)):
-        final_col[index] = final_col[index] / minimum
+    moles_list = decimal_to_moles(final_col)
 
-    validate_moles(final_col)
-    #print(final_col)
+    validate_moles(moles_list)
+
     output = ""
     for index, compound in enumerate(printable_reactants):
-        output += str(final_col[index]) + str(compound)
+        output += str(moles_list[index]) + str(compound)
         if index != len(reactant_nodes) - 1:
             output += ' + '
 
     output += ' --> '
 
     for index, compound in enumerate(printable_products):
-        output += str(final_col[index + len(reactant_nodes)]) + str(compound)
+        output += str(moles_list[index + len(reactant_nodes)]) + str(compound)
         if index != len(product_nodes) - 1:
             output += ' + '
 
@@ -457,6 +438,16 @@ def expand_equation(equation):
     return equation
 
 
+def get_unique_elements(equation_node_list):
+    unique_elements = []
+    for compound in equation_node_list:
+        for element in compound.elements_dict:
+            if element not in unique_elements:
+                unique_elements.append(element)
+
+    return unique_elements
+
+
 def create_matrix(unique_elements, equation):
     elements_matrix = []
     for unique_element in unique_elements:
@@ -486,6 +477,13 @@ def find_null_space(twoD_array):
     nnz = (s >= tol).sum()
     ns = vh[nnz:].conj().T
     return ns
+
+
+def decimal_to_moles(decimals: list) -> list:
+    minimum = min(decimals)
+    for index in range(len(decimals)):
+        decimals[index] = decimals[index] / minimum
+    return decimals
 
 
 def validate_balancing(reactant_nodes, product_nodes):
