@@ -327,12 +327,12 @@ def balance(equation: str, return_moles=False):
 
     printable_products = printable_equation_list[product_side].split('+')
 
-    validate_input(reactant_nodes, product_nodes)
+    enforce_conservation_of_matter(reactant_nodes, product_nodes)
 
     equation_node_list = reactant_nodes + product_nodes
-    unique_elements = get_unique_elements(equation_node_list)
+    elements_set = get_elements_set(equation_node_list)
 
-    elements_matrix = create_matrix(unique_elements, equation_node_list)
+    elements_matrix = create_matrix(elements_set, equation_node_list)
 
     balanced_moles_in_decimal = find_null_space(elements_matrix)
 
@@ -346,7 +346,7 @@ def balance(equation: str, return_moles=False):
     # The final_col contains decimals right now. We need to divide by the smallest to determine the number of moles
     moles_list = decimal_to_moles(final_col)
 
-    validate_moles(moles_list)
+    intify_moles(moles_list)
 
     output = ""
     for index, compound in enumerate(printable_reactants):
@@ -364,7 +364,14 @@ def balance(equation: str, return_moles=False):
     return output
 
 
-def validate_input(reactant_nodes, product_nodes):
+def enforce_conservation_of_matter(reactant_nodes, product_nodes):
+    """
+    Makes sure the given equation is valid. Mainly determines if elements given in the reactant are also in the products and vice versa.
+    Raises an error if an element on one side is not found in the other.
+    :param reactant_nodes: A list of the reactants in the form of CompoundNodes
+    :param product_nodes: A list of products in the form of CompoundNodes
+    :return: None
+    """
     elements_reactant = set()
     for compound in reactant_nodes:
         for element in compound.elements_dict:
@@ -412,6 +419,11 @@ def validate_input(reactant_nodes, product_nodes):
 
 
 def expand_equation(equation):
+    """
+    Takes all polyatomic ions on the equation and expands them. Ex: (SO3)4 -> S4O12
+    :param equation: The unmodified string of the given equation
+    :return: The expanded string of the equation
+    """
     polyatomic_ions = re.findall(r'(\(([A-Z][a-z]?\d*)+\)\d*)', str(equation))
 
     entire_atom_index = 0
@@ -438,19 +450,36 @@ def expand_equation(equation):
     return equation
 
 
-def get_unique_elements(equation_node_list):
-    unique_elements = []
+def get_elements_set(equation_node_list):
+    """
+    Search the the equation_list which consists of CompoundNodes and obtain a set of the elements in the equation
+    :param equation_node_list: A list which consists of CompoundNodes created from the original equation
+    :return: A list of each element in the equation (non repeating)
+    """
+    elements_set = []
     for compound in equation_node_list:
         for element in compound.elements_dict:
-            if element not in unique_elements:
-                unique_elements.append(element)
+            if element not in elements_set:
+                elements_set.append(element)
 
-    return unique_elements
+    return elements_set
 
 
-def create_matrix(unique_elements, equation):
+def create_matrix(elements_set: list, equation: list):
+    """
+    Creates a two dimensional matrix out of the element elements set and equation (list).
+    Each row represents a different element. Each column represents a compound.
+    Ex: H2 + O2 -> H2O
+        H2  O2  H2O
+    H   2   0   2
+    O   0   2   1
+
+    :param elements_set: A list of individual elements in the equation (non repeating)
+    :param equation: A list of all compounds (in the form of ComopundNodes) in the equation.
+    :return: A two dimensional array of all elements to compounds in the equation.
+    """
     elements_matrix = []
-    for unique_element in unique_elements:
+    for unique_element in elements_set:
         row = []
         for compound in equation:
 
@@ -469,7 +498,14 @@ def create_matrix(unique_elements, equation):
     return elements_matrix
 
 
-def find_null_space(twoD_array):
+def find_null_space(twoD_array) -> list:
+    """
+    Determines the null space of a given matrix
+    :param twoD_array: A two dimensional array made from the create_matrix function.
+    :return: A list of floats (the null space). Negative values are products, positive are reactants.
+    The list contains decimals and should be converted to moles. Each value corresponds to a
+    compound in the given equation.
+    """
     element_mat = numpy.atleast_2d(twoD_array)
     u, s, vh = numpy.linalg.svd(element_mat)
     default_return = 1e-13
@@ -480,6 +516,12 @@ def find_null_space(twoD_array):
 
 
 def decimal_to_moles(decimals: list) -> list:
+    """
+    Determines hte minimum value in the list and divides every value by the minimum
+    :param decimals: A list of float values
+    :return: A list containing moles of each element in the equation.
+    Each mole corresponds to a compound in the equation (left to right).
+    """
     minimum = min(decimals)
     for index in range(len(decimals)):
         decimals[index] = decimals[index] / minimum
@@ -487,6 +529,12 @@ def decimal_to_moles(decimals: list) -> list:
 
 
 def validate_balancing(reactant_nodes, product_nodes):
+    """
+    Ensures that the equation is properly balanced.
+    :param reactant_nodes: A list of the reactant nodes (CompoundNodes) in the equation.
+    :param product_nodes: A list of the reactant nodes (CompoundNodes) in the equation.
+    :return: Returns True if the number of moles of each element is the same on both sides. False otherwise.
+    """
     elements_tally_react = {}
     for compound in reactant_nodes:
         for element in compound.elements_dict:
@@ -511,6 +559,12 @@ def validate_balancing(reactant_nodes, product_nodes):
 
 
 def create_nodes_from_eq(reactants: list, products: list):
+    """
+    Creates CompoundNodes from the reactants and products lists
+    :param reactants: A list of the reactants
+    :param products: A list of the products
+    :return: A list of the reactant_nodes and product_nodes, each of which contain CompoundNodes
+    """
     reactant_nodes = []
     product_nodes = []
     for ingredient in reactants:
@@ -527,7 +581,13 @@ def create_nodes_from_eq(reactants: list, products: list):
     return reactant_nodes, product_nodes
 
 
-def validate_moles(moles: list):
+def intify_moles(moles: list):
+    """
+    Turns half moles into whole moles. Modifies the list (in place), 
+    doubling each value if a value of 1.5 moles is detected.
+    :param moles: A list of moles in the equation.
+    :return: None
+    """
     for number in moles:
         if number == 1.5:
             fraction = number.as_integer_ratio()
@@ -536,7 +596,7 @@ def validate_moles(moles: list):
 
 
 
-def getMass(symbol: str, format_return=True) -> str:
+def get_mass(symbol: str, format_return=True) -> str:
     """
 	Determines and returns the mass of an individual symbol.
 	:param symbol: An individual element on the periodic table.
@@ -544,7 +604,7 @@ def getMass(symbol: str, format_return=True) -> str:
 	:return: The mass of the individual element (formatted or not depending on format_return).
 	"""
 
-    sanitized_symbol = sanitizeElement(symbol)
+    sanitized_symbol = sanitize_element(symbol)
     if format_return:
         ret_val = "The mass of " + symbol_to_name[sanitized_symbol] + ' (' + sanitized_symbol \
                   + ") is " + symbol_to_mass[sanitized_symbol] + "g/mol"
@@ -553,7 +613,7 @@ def getMass(symbol: str, format_return=True) -> str:
     return ret_val
 
 
-def sanitizeElement(symbol: str) -> str:
+def sanitize_element(symbol: str) -> str:
     """
 	Puts the given symbol in the correct format. Ex: na -> Na, h -> H, he -> He.
 	:param symbol: The individual element on the periodic table (already formatted properly or not).
@@ -568,7 +628,7 @@ def sanitizeElement(symbol: str) -> str:
     return sanitized_symbol
 
 
-def getSymbol(mass: str) -> str:
+def get_symbol(mass: str) -> str:
     """
 	Obtains the elemental symbol whole mass is closest to that of the mass specified.
 	:param mass: The (string) of the given mass.
@@ -585,18 +645,18 @@ def getSymbol(mass: str) -> str:
     return mass_to_symbol[closest_match]
 
 
-def getFullName(symbol: str) -> str:
+def get_full_name(symbol: str) -> str:
     """
 	Given an elemental symbol, returns the full name of the given element.
 	:param symbol: The symbol of the element one wishes to determine the full name of.
 	:return: The full name of the given element
 	"""
-    sanitized_symbol = sanitizeElement(symbol)
+    sanitized_symbol = sanitize_element(symbol)
     ret_val = sanitized_symbol + " is " + symbol_to_name[sanitized_symbol]
     return ret_val
 
 
-def getAtomicNumber(symbol: str, format_return=True) -> str:
+def get_atomic_number(symbol: str, format_return=True) -> str:
     """
 	Finds and returns the atomic number of the given element.
 	:param symbol: The element in which the atomic number is to be retrieved.
@@ -604,7 +664,7 @@ def getAtomicNumber(symbol: str, format_return=True) -> str:
 	false if the atomic number alone is desired.
 	:return: The atomic number of the given symbol (formatted or not depending on format_return which defaults to True)
 	"""
-    symbol = sanitizeElement(symbol)
+    symbol = sanitize_element(symbol)
     atomic_number = symbol_to_number[symbol]
     if format_return:
         ret_val = 'The atomic number of {element} ({elem_symbol}) is {number}'.format(
@@ -615,7 +675,7 @@ def getAtomicNumber(symbol: str, format_return=True) -> str:
     return ret_val
 
 
-def getElementInfo(input: str, format_return=True) -> str:
+def get_element_info(input: str, format_return=True) -> str:
     """
 	Get all available information about the input (element)
 	:param input: Either the name of an element or the symbol of an element
@@ -636,7 +696,7 @@ def getElementInfo(input: str, format_return=True) -> str:
                 elem_name = val
 
     else:  # Given the element symbol
-        elem = sanitizeElement(input)
+        elem = sanitize_element(input)
         elem_name = symbol_to_name[elem]
 
     if format_return:
@@ -714,7 +774,7 @@ def getCharge(symbol: str, format_return=True) -> str:
         return '0'
 
 
-def massToMoles(mass: str, input: str, format_return=True) -> str:
+def mass_to_moles(mass: str, input: str, format_return=True) -> str:
     """
     Converts the mass of the given element to moles of the given element. ex: 10gH * 1molH/1.008gH = ...
     :param mass: The mass of the given element or compound
@@ -751,7 +811,6 @@ def deconstruct(compound: str) -> list:
     for elem in contents:
         elem = elem[0]
         if elem[0] == '(':
-            # TODO fix for (SO3)4
             inside = deconstruct(elem)
             for piece in inside:
                 separated.append(piece)
@@ -762,8 +821,8 @@ def deconstruct(compound: str) -> list:
 
 
 def amount_producible(grams_given: str, element_given: str, compound_desired: str, format_return=True) -> str:
-    grams_to_moles = massToMoles(grams_given, element_given, format_return=False)  # Moles of element_given
-    # print('have {moles} moles of {element}'.format(moles=grams_to_moles, element=element_given))
+    grams_to_moles = mass_to_moles(grams_given, element_given, format_return=False)  # Moles of element_given
+
     pure_element = re.match(r"(\D*)", element_given)
     pure_element = pure_element.group(1)
     moles_of_element_given = re.match(r"\D*(\d*)", element_given)
@@ -777,21 +836,15 @@ def amount_producible(grams_given: str, element_given: str, compound_desired: st
 
         moles_of_element = 1.0 if moles_of_element.group(1) is '' else moles_of_element.group(1)
         element = element.group(1)
-        # print(element)
 
         if element == pure_element:
-            # print(elem)
-            # print('element is: ' + element)
-            # print('moles of element: {moles}'.format(moles=moles_of_element))
-            # num of moles per 1 mole of compound desired
             moles_of_top = 1 * float(moles_of_element_given)
-            # print('moles of top: {moles} of {element}'.format(moles=moles_of_top, element=compound_desired))
+
             moles_of_bot = float(moles_of_element_given) * float(moles_of_element)
-            # print('moles of bottom: {moles} of {element}'.format(moles=moles_of_bot, element=element))
 
             to_mult = moles_of_top / moles_of_bot * float(
                 moles_of_element_given)  # TODO figure out why I have to multiply by elmenet_given again
-            # print('moles of {desired} is {moles}'.format(desired=compound_desired, moles=to_mult))
+
             produced = to_mult * float(grams_to_moles)
             if format_return:
                 ret_val = '{grams}g of {given} would produce {moles} moles of {wanted}'.format(grams=grams_given,
@@ -934,7 +987,7 @@ def update() -> None:
     file.close()
 
 
-def main():
+if __name__ == '__main__':
     # a = requests.get('http://chemistry.about.com/od/chemicalbonding/fl/Element-Charges-Chart.htm')
     # b = BeautifulSoup(a.content)
     # print(b)
@@ -943,26 +996,22 @@ def main():
     expected_return = sys.argv[1]  # what the user wants back.
     # Ex: mN would mean the user wants us to give them the mass of Nitrogen
     if expected_return == 'mass':  # The user wants the mass and gave the symbol of the element
-        result = getMass(sys.argv[2])
+        result = get_mass(sys.argv[2])
     elif expected_return == 'name':
-        result = getFullName(sys.argv[2])
+        result = get_full_name(sys.argv[2])
     elif expected_return == 'symbol':  # Assume the user wants the name and gave the mass
-        result = getSymbol(sys.argv[2])
+        result = get_symbol(sys.argv[2])
     elif expected_return == 'compound':
         result = massOfCompound(sys.argv[2])
     elif expected_return == 'info':
-        result = getElementInfo(sys.argv[2])
+        result = get_element_info(sys.argv[2])
     elif expected_return == 'anum':
-        result = getAtomicNumber(sys.argv[2])
+        result = get_atomic_number(sys.argv[2])
     elif expected_return == 'moles':
-        result = massToMoles(sys.argv[2], sys.argv[3])
+        result = mass_to_moles(sys.argv[2], sys.argv[3])
     elif expected_return == 'limiting':
         result = amount_producible(sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         result = balance(sys.argv[1])
-        #result = test(sys.argv[1])
+        # result = test(sys.argv[1])
     print(result)
-
-
-if __name__ == '__main__':
-    main()
