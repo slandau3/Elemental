@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # author: Steven Landau (skl8881@g.rit.edu)
 
-import argparse, sys
+import argparse, sys, time
 import pprint
 import random
 import re
@@ -987,11 +987,27 @@ def update() -> None:
     file.close()
 
 
+def help():
+    print("elemental [command] [associated input]\n"
+          "Command      Info\n"
+          "mass         Given an element, prints the mass of the element\n"
+          "name         Given the mass, prints a name of the element\n"
+          "symbol       Given an element, prints the name of the element\n"
+          "compound     Given a compound, prints the mass of the compound\n"
+          "info         Given an element, prints useful information about the element\n"
+          "anum         Given an element, prints the atomic number of the element\n"
+          "moles        Given the mass of an element then the elemental symbol, "
+          "prints the number of moles of the given element that can be created\n"
+          "limiting     Given the mass, element and compound, prints the number of moles of the"
+          "compound that can be produced with the mass of the given element\n"
+          "eq           Given an equation, prints the balanced form of the equation\n")
+
 if __name__ == '__main__':
     # a = requests.get('http://chemistry.about.com/od/chemicalbonding/fl/Element-Charges-Chart.htm')
     # b = BeautifulSoup(a.content)
     # print(b)
     # update()
+    #start = time.process_time()
     result = None
     expected_return = sys.argv[1]  # what the user wants back.
     # Ex: mN would mean the user wants us to give them the mass of Nitrogen
@@ -1011,7 +1027,11 @@ if __name__ == '__main__':
         result = mass_to_moles(sys.argv[2], sys.argv[3])
     elif expected_return == 'limiting':
         result = amount_producible(sys.argv[2], sys.argv[3], sys.argv[4])
-    else:
-        result = balance(sys.argv[1])
+    elif expected_return == 'eq' or expected_return == 'equation':
+        result = balance(sys.argv[2])
         # result = test(sys.argv[1])
+    else:
+        help()
+        exit(0)
     print(result)
+    #print('end time', time.process_time() - start)
