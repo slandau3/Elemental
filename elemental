@@ -1,36 +1,40 @@
 #!/usr/bin/env python3
 # author: Steven Landau (skl8881@g.rit.edu)
 
-import argparse, sys, time
+import argparse
+import sys
+import time
 import pprint
 import random
 import re
 import requests
-import sympy, numpy
+import sympy
+import numpy
 from collections import defaultdict
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 from fractions import gcd
 from sympy import Symbol
 
+
 """
 TODO
 -Rework the way I handle command line input
 -Add functionality to balance equations (make this into a full on compiler with a parse tree?)
-	-Add functionality to do redox reactions - DONE
-	-Add functionality to do balancing when in an acidic/basic solution
-	-Add functionality to determine the state of each of the molecules
-	-Add functionality to balance charges as well. - Added charges
-	-Add functionality to solve combustion reactions
-	-Add functionality to solve enthalpy reactions
-	-Add functionality to solve all trivial reaction formulas - DONE
-	-Add functionality to find the amount_produceable reagent - DONE more or less
-	-Add functionality to output the charge of an atom - DONE
-	-Add functionality to output the number of valance electrons of an atom
-	-Add functionality to determine the electronegativity of an atom
-	-Add functionality to solve for molarity
-	-Add fucntionality for quantum numbers
-	-Add functionality to display electron configurations
+   -Add functionality to do redox reactions - DONE
+   -Add functionality to do balancing when in an acidic/basic solution
+   -Add functionality to determine the state of each of the molecules
+   -Add functionality to balance charges as well. - Added charges
+   -Add functionality to solve combustion reactions
+   -Add functionality to solve enthalpy reactions
+   -Add functionality to solve all trivial reaction formulas - DONE
+   -Add functionality to find the amount_produceable reagent - DONE more or less
+   -Add functionality to output the charge of an atom - DONE
+   -Add functionality to output the number of valance electrons of an atom
+   -Add functionality to determine the electronegativity of an atom
+   -Add functionality to solve for molarity
+   -Add fucntionality for quantum numbers
+   -Add functionality to display electron configurations
 
 
 -Add functionality to convert mass to moles - DONE
@@ -167,6 +171,7 @@ class InvalidNameException(Exception):
 class ProductsNotFoundException(Exception):
     def __init__(self, message):
         self.message = message
+
 
 class InvalidEquationException(Exception):
     def __init__(self, message):
@@ -410,7 +415,7 @@ def enforce_conservation_of_matter(reactant_nodes, product_nodes):
 
         if num_of_elements > 1:
             polyatom = element
-            for elem in polyatom: # TODO There is probably a better, more reliable way to handle this
+            for elem in polyatom:  # TODO There is probably a better, more reliable way to handle this
                 if elem not in elements_reactant:
                     raise InvalidSymbolException('{element} not found in products'.format(element=element))
 
@@ -498,7 +503,7 @@ def create_matrix(elements_set: list, equation: list):
     return elements_matrix
 
 
-def find_null_space(twoD_array) -> list:
+def find_null_space(twoD_array):
     """
     Determines the null space of a given matrix
     :param twoD_array: A two dimensional array made from the create_matrix function.
@@ -515,7 +520,7 @@ def find_null_space(twoD_array) -> list:
     return ns
 
 
-def decimal_to_moles(decimals: list) -> list:
+def decimal_to_moles(decimals: list):
     """
     Determines hte minimum value in the list and divides every value by the minimum
     :param decimals: A list of float values
@@ -596,14 +601,13 @@ def intify_moles(moles: list):
 
 
 
-def get_mass(symbol: str, format_return=True) -> str:
-    """
-	Determines and returns the mass of an individual symbol.
-	:param symbol: An individual element on the periodic table.
-	:param format_return: True if the return is to be formatted and ready for immediate output. False if the mass alone is to be returned.
-	:return: The mass of the individual element (formatted or not depending on format_return).
-	"""
-
+def get_mass(symbol: str, format_return=True):
+   """
+   Determines and returns the mass of an individual symbol.
+   :param symbol: An individual element on the periodic table.
+   :param format_return: True if the return is to be formatted and ready for immediate output. False if the mass alone is to be returned.
+   :return: The mass of the individual element (formatted or not depending on format_return).
+   """
     sanitized_symbol = sanitize_element(symbol)
     if format_return:
         ret_val = "The mass of " + symbol_to_name[sanitized_symbol] + ' (' + sanitized_symbol \
@@ -613,12 +617,12 @@ def get_mass(symbol: str, format_return=True) -> str:
     return ret_val
 
 
-def sanitize_element(symbol: str) -> str:
-    """
-	Puts the given symbol in the correct format. Ex: na -> Na, h -> H, he -> He.
-	:param symbol: The individual element on the periodic table (already formatted properly or not).
-	:return: The same element but with proper formatting.
-	"""
+def sanitize_element(symbol: str):
+   """
+   Puts the given symbol in the correct format. Ex: na -> Na, h -> H, he -> He.
+   :param symbol: The individual element on the periodic table (already formatted properly or not).
+   :return: The same element but with proper formatting.
+   """
     if len(symbol) == 2:
         sanitized_symbol = symbol[0].upper()  # Making sure this is in the right format
         sanitized_symbol += symbol[1].lower()
@@ -628,12 +632,12 @@ def sanitize_element(symbol: str) -> str:
     return sanitized_symbol
 
 
-def get_symbol(mass: str) -> str:
+def get_symbol(mass: str):
     """
-	Obtains the elemental symbol whole mass is closest to that of the mass specified.
-	:param mass: The (string) of the given mass.
-	:return: The element whose mass is closest to that which was given.
-	"""
+   Obtains the elemental symbol whole mass is closest to that of the mass specified.
+   :param mass: The (string) of the given mass.
+   :return: The element whose mass is closest to that which was given.
+   """
     match_num, closest_match = 500.0, None
     mass = float(mass)
     for entry in mass_to_symbol:
@@ -645,25 +649,25 @@ def get_symbol(mass: str) -> str:
     return mass_to_symbol[closest_match]
 
 
-def get_full_name(symbol: str) -> str:
+def get_full_name(symbol: str):
     """
-	Given an elemental symbol, returns the full name of the given element.
-	:param symbol: The symbol of the element one wishes to determine the full name of.
-	:return: The full name of the given element
-	"""
+   Given an elemental symbol, returns the full name of the given element.
+   :param symbol: The symbol of the element one wishes to determine the full name of.
+   :return: The full name of the given element
+   """
     sanitized_symbol = sanitize_element(symbol)
     ret_val = sanitized_symbol + " is " + symbol_to_name[sanitized_symbol]
     return ret_val
 
 
-def get_atomic_number(symbol: str, format_return=True) -> str:
+def get_atomic_number(symbol: str, format_return=True):
     """
-	Finds and returns the atomic number of the given element.
-	:param symbol: The element in which the atomic number is to be retrieved.
-	:param format_return: True (Default) if one wishes the return to be formatted (pretty printable) and
-	false if the atomic number alone is desired.
-	:return: The atomic number of the given symbol (formatted or not depending on format_return which defaults to True)
-	"""
+   Finds and returns the atomic number of the given element.
+   :param symbol: The element in which the atomic number is to be retrieved.
+   :param format_return: True (Default) if one wishes the return to be formatted (pretty printable) and
+   false if the atomic number alone is desired.
+   :return: The atomic number of the given symbol (formatted or not depending on format_return which defaults to True)
+   """
     symbol = sanitize_element(symbol)
     atomic_number = symbol_to_number[symbol]
     if format_return:
@@ -675,13 +679,13 @@ def get_atomic_number(symbol: str, format_return=True) -> str:
     return ret_val
 
 
-def get_element_info(input: str, format_return=True) -> str:
+def get_element_info(input: str, format_return=True):
     """
-	Get all available information about the input (element)
-	:param input: Either the name of an element or the symbol of an element
-	:return: A formatted string containing all available info on the given input. If format_return is false,
-	a dictionary is returned containing all relevent information.
-	"""
+   Get all available information about the input (element)
+   :param input: Either the name of an element or the symbol of an element
+   :return: A formatted string containing all available info on the given input. If format_return is false,
+   a dictionary is returned containing all relevent information.
+   """
     if len(input) != 1 and len(input) != 2:  # Given the full element name
         closest_ratio = 0
         elem_name = ''
@@ -709,13 +713,13 @@ def get_element_info(input: str, format_return=True) -> str:
     return ret_val
 
 
-def massOfCompound(compound: str, format_return=True) -> str:
+def massOfCompound(compound: str, format_return=True):
     """
-	:pre The compounds format must be correct. Ex: Mn will work, mn will throw an error. H will work, h will throw an error.
-	:param compound: The compound whose mass is to be determined
-	:return: If format_return is off, the function will return the pure mass of the compound. If format_return is on,
-	the function will return the mass of the compound in printable format.
-	"""
+   :pre The compounds format must be correct. Ex: Mn will work, mn will throw an error. H will work, h will throw an error.
+   :param compound: The compound whose mass is to be determined
+   :return: If format_return is off, the function will return the pure mass of the compound. If format_return is on,
+   the function will return the mass of the compound in printable format.
+   """
     #  Cannot sanitize the string here. No way to tell if say ncsu is supposed to be Nitrigen Ceasium (Cs) and Uranium
     # or Nitrogen Carbon Sulfur and Uranium
 
@@ -760,7 +764,7 @@ def massOfCompound(compound: str, format_return=True) -> str:
     return ret_val
 
 
-def getCharge(symbol: str, format_return=True) -> str:
+def getCharge(symbol: str, format_return=True):
     """
     Retrieves the charge of the given element.
     :param symbol: The given element of which the charge is to be found.
@@ -774,7 +778,7 @@ def getCharge(symbol: str, format_return=True) -> str:
         return '0'
 
 
-def mass_to_moles(mass: str, input: str, format_return=True) -> str:
+def mass_to_moles(mass: str, input: str, format_return=True):
     """
     Converts the mass of the given element to moles of the given element. ex: 10gH * 1molH/1.008gH = ...
     :param mass: The mass of the given element or compound
@@ -784,15 +788,14 @@ def mass_to_moles(mass: str, input: str, format_return=True) -> str:
     """
     result = float(mass) * (float(massOfCompound(input, format_return=False)) ** -1)
     if format_return:
-        ret_val = '{grams}g of {elem} was converted to {moles} moles of {elem}'.format(grams=mass, elem=input,
-                                                                                       moles=result)
+        ret_val = '{grams}g of {elem} was converted to {moles} moles of {elem}'.format(grams=mass, elem=input, moles=result)
     else:
         ret_val = result
 
     return ret_val
 
 
-def deconstruct(compound: str) -> list:
+def deconstruct(compound: str):
     """
     Deconstructs a given compound and returns a list of the individual elements (along with the number of moles for each in the compound)
     If the compound contains elements inside a parenthesis the output will be as follows.
@@ -820,7 +823,7 @@ def deconstruct(compound: str) -> list:
     return separated
 
 
-def amount_producible(grams_given: str, element_given: str, compound_desired: str, format_return=True) -> str:
+def amount_producible(grams_given: str, element_given: str, compound_desired: str, format_return=True):
     grams_to_moles = mass_to_moles(grams_given, element_given, format_return=False)  # Moles of element_given
 
     pure_element = re.match(r"(\D*)", element_given)
@@ -847,10 +850,7 @@ def amount_producible(grams_given: str, element_given: str, compound_desired: st
 
             produced = to_mult * float(grams_to_moles)
             if format_return:
-                ret_val = '{grams}g of {given} would produce {moles} moles of {wanted}'.format(grams=grams_given,
-                                                                                               given=element_given,
-                                                                                               moles=produced,
-                                                                                               wanted=compound_desired)
+                ret_val = '{grams}g of {given} would produce {moles} moles of {wanted}'.format(grams=grams_given, given=element_given, moles=produced, wanted=compound_desired)
             else:
                 ret_val = produced
 
@@ -858,7 +858,7 @@ def amount_producible(grams_given: str, element_given: str, compound_desired: st
 
             # Now find out how many moles of the element given are in the compound desired.
 
-def update() -> None:
+def update():
     response = requests.get('http://www.ptable.com/')
     page = BeautifulSoup(response.content, 'html.parser')
 
@@ -868,11 +868,11 @@ def update() -> None:
     num_obtained = 0
 
     """
-	Group 1: Atomic #
-	Group 2: Atomic Symbol
-	Group 3: Element Name
-	Group 4: Atomic Mass
-	"""
+   Group 1: Atomic #
+   Group 2: Atomic Symbol
+   Group 3: Element Name
+   Group 4: Atomic Mass
+   """
     retrieved_mass_to_symbol = []
     retrieved_symbol_to_mass = []
     retrieved_symbol_to_number = []
@@ -987,20 +987,19 @@ def update() -> None:
     file.close()
 
 
-def help():
+def help(output=sys.stderr):
     print("elemental [command] [associated input]\n"
           "Command      Info\n"
-          "mass         Given an element, prints the mass of the element\n"
-          "name         Given the mass, prints a name of the element\n"
-          "symbol       Given an element, prints the name of the element\n"
-          "compound     Given a compound, prints the mass of the compound\n"
-          "info         Given an element, prints useful information about the element\n"
-          "anum         Given an element, prints the atomic number of the element\n"
-          "moles        Given the mass of an element then the elemental symbol, "
-          "prints the number of moles of the given element that can be created\n"
-          "limiting     Given the mass, element and compound, prints the number of moles of the"
-          "compound that can be produced with the mass of the given element\n"
-          "eq           Given an equation, prints the balanced form of the equation\n")
+          "mass         Prints mass of a given element. Usage: elemental mass [Element Symbol]\n\n"
+          "name         Prints the name of a given elemental symbol. Usage: elemental name [Element Symbol]\n\n"
+          "symbol       Prints the symbol given the name of an element. Usage: elemental symbol [Element name]\n\n"
+          "compound     Prints the total mass in g/mol of a compound. Usage: elemental compound [Compound]\n\n"
+          "info         Prints all available information about a given element. Usage: elemental info [Elemental symbol]\n\n"
+          "anum         Prints the atomic number of a given element. Usage: elemental anum [Element Symbol]\n\n"
+          "moles        Prints the moles of a given element. Usage: elemental moles [grams of element] [Elemental Symbol]\n\n"
+          "limiting     Prints the number of moles that can be achieved with X grams of the given compound. Usage: elemental limiting [grams of compound or element] [element] [product]. This currently only works with an element and where there is only one product.\n\n"
+          "eq           Prints the balanced version of the equation. Usage: elemental eq \"[Equation]\"\n\n", file=output)
+
 
 if __name__ == '__main__':
     # a = requests.get('http://chemistry.about.com/od/chemicalbonding/fl/Element-Charges-Chart.htm')
@@ -1009,7 +1008,12 @@ if __name__ == '__main__':
     # update()
     #start = time.process_time()
     result = None
+    if len(sys.argv) == 1:
+      help()
+      exit(1)
+
     expected_return = sys.argv[1]  # what the user wants back.
+    #parser = argparse.ArgumentParser()
     # Ex: mN would mean the user wants us to give them the mass of Nitrogen
     if expected_return == 'mass':  # The user wants the mass and gave the symbol of the element
         result = get_mass(sys.argv[2])
